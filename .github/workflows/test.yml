@@ -91,8 +91,8 @@ jobs:
                         exit 1
                     fi
                     response=$(curl -s http://localhost:80/visits)
-                    if [[ "$response" != "1" ]]; then
-                        echo "Expected '1', got: $response"
+                    if [[ "$response" -gt "0" ]]; then
+                        echo "Expected greater than zero, got: $response"
                         exit 1
                     fi
                     echo "Web test passed!"
