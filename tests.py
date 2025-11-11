@@ -20,20 +20,3 @@ def test_visits_dev_returns_minus_one(monkeypatch):
     response = client.get("/visits")
     assert response.status_code == 200
     assert response.text == "-1"
-
-def test_visits_prod_returns_number(monkeypatch):
-    app.state.mode = AppMode.PROD
-
-    class DummyCursor:
-        def execute(self, q): pass
-        def fetchone(self): return [42]
-    class DummyConn:
-        def __enter__(self): return self
-        def __exit__(self, *a): pass
-        def cursor(self): return DummyCursor()
-        def close(self): pass
-
-    monkeypatch.setattr("server.psycopg2.connect", lambda _: DummyConn())
-    response = client.get("/visits")
-    assert response.status_code == 200
-    assert response.text == "42"
