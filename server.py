@@ -22,8 +22,6 @@ def insert_visit(ip: str):
     conn.close()
 
 def count_visits() -> int:
-    if not DATABASE_URL:
-        return 0
     conn = psycopg2.connect(DATABASE_URL)
     with conn:
         with conn.cursor() as cur:
