@@ -9,8 +9,13 @@ class AppMode(Enum):
     PROD = 1
 
 app = FastAPI()
+
 app.state.mode = AppMode.DEV if os.getenv("APP_MODE", "").upper() == "DEV" else AppMode.PROD
+
 DATABASE_URL = os.getenv("DATABASE_URL")
+
+if not DATABASE_URL:
+    print("Running without database, are you sure this is intended?")
 
 def insert_visit(ip: str):
     if not DATABASE_URL:
@@ -22,6 +27,8 @@ def insert_visit(ip: str):
     conn.close()
 
 def count_visits() -> int:
+    if not DATABASE_URL:
+        return
     conn = psycopg2.connect(DATABASE_URL)
     with conn:
         with conn.cursor() as cur:
