@@ -6,7 +6,7 @@ on:
         branches: [ main ]
 
 jobs:
-    test-compose:
+    test-application:
         runs-on: ubuntu-latest
 
         steps:
@@ -25,22 +25,21 @@ jobs:
                     pip install --no-cache-dir -r requirements.txt
                     pytest tests.py --maxfail=1 -q
 
-            - name: Create test .env
-              run: |
-                    cat > .env <<'EOF'
-                    POSTGRES_USER=user
-                    POSTGRES_PASSWORD=pass
-                    POSTGRES_DB=db
-                    EOF
+    test-compose-dev:
+        runs-on: ubuntu-latest
 
-            - name: Start services (DEV)
+        steps:
+            - name: Checkout code
+              uses: actions/checkout@v5
+
+            - name: Start services
               run: |
                     docker compose -f docker-compose-dev.yaml up -d --build
 
-            - name: Wait for service (DEV)
+            - name: Wait for services
               run: |
                     timeout=60
-                    while ! curl -f http://localhost:80/ping >/dev/null 2>&1; do
+                    while ! curl -f http://localhost:5000/ping >/dev/null 2>&1; do
                     ((timeout--))
                     if [ $timeout -eq 0 ]; then
                         echo "Web service failed to start"
@@ -49,9 +48,9 @@ jobs:
                     sleep 1
                     done
 
-            - name: Test web response (DEV)
+            - name: Test web response
               run: |
-                    response=$(curl -s http://localhost:80/ping)
+                    response=$(curl -s http://localhost:5000/ping)
                     if [[ "$response" != "pong" ]]; then
                         echo "Expected 'pong', got: $response"
                         exit 1
@@ -63,18 +62,29 @@ jobs:
                     fi
                     echo "Web test passed!"
 
-            - name: Shutdown services (DEV)
-              run: |
-                    docker compose -f docker-compose-dev.yaml down -v
+    test-compose-prod:
+        runs-on: ubuntu-latest
 
-            - name: Start services (PROD)
+        steps:
+          - name: Checkout code
+              uses: actions/checkout@v5
+
+           - name: Create test .env
+              run: |
+                    cat > .env <<'EOF'
+                    POSTGRES_USER=user
+                    POSTGRES_PASSWORD=pass
+                    POSTGRES_DB=db
+                    EOF
+
+            - name: Start services
               run: |
                     docker compose -f docker-compose-prod.yaml up -d --build
 
-            - name: Wait for service (PROD)
+            - name: Wait for services
               run: |
                     timeout=60
-                    while ! curl -f http://localhost:80/ping >/dev/null 2>&1; do
+                    while ! curl -f http://localhost:5000/ping >/dev/null 2>&1; do
                     ((timeout--))
                     if [ $timeout -eq 0 ]; then
                         echo "Web service failed to start"
@@ -83,7 +93,7 @@ jobs:
                     sleep 1
                     done
 
-            - name: Test web response (PROD)
+            - name: Test web response
               run: |
                     response=$(curl -s http://localhost:80/ping)
                     if [[ "$response" != "pong" ]]; then
@@ -97,11 +107,11 @@ jobs:
                     fi
                     echo "Web test passed!"
 
-            - name: Test PostgreSQL connection (PROD)
+            - name: Test PostgreSQL connection
               run: |
                     docker compose -f docker-compose-prod.yaml exec -T database pg_isready -U "$POSTGRES_USER" -d "$POSTGRES_DB"
 
-            - name: Verify database initialization (PROD)
+            - name: Verify database initialization
               run: |
                     result=$(docker compose -f docker-compose-prod.yaml exec -T database \
                         psql postgresql://user:pass@database:5432/db -tAc "SELECT to_regclass('public.visits');" | tr -d '[:space:]')
@@ -109,11 +119,3 @@ jobs:
                         echo "initialization failed"
                         exit 1
                     fi
-
-            - name: Shutdown services (PROD)
-              run: |
-                    docker compose -f docker-compose-prod.yaml down -v
-
-            - name: Show logs on failure
-              if: failure()
-              run: docker compose -f docker-compose-prod.yaml logs
