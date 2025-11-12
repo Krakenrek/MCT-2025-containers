@@ -15,7 +15,7 @@ def test_ping_without_database():
 
 def test_ping_with_database():
     with patch.dict(os.environ, {"DATABASE_URL": "postgresql://test"}):
-        with patch("main.psycopg2.connect") as mock_connect:
+        with patch("server.psycopg2.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_connect.return_value = mock_conn
             response = client.get("/ping")
@@ -34,7 +34,7 @@ def test_visits_dev_mode():
 def test_visits_prod_mode_success():
     app.state.mode = AppMode.PROD
     with patch.dict(os.environ, {"DATABASE_URL": "postgresql://test"}):
-        with patch("main.psycopg2.connect") as mock_connect:
+        with patch("server.psycopg2.connect") as mock_connect:
             mock_conn = MagicMock()
             mock_connect.return_value = mock_conn
             mock_cur = MagicMock()
@@ -49,7 +49,7 @@ def test_visits_prod_mode_success():
 def test_visits_prod_mode_database_error():
     app.state.mode = AppMode.PROD
     with patch.dict(os.environ, {"DATABASE_URL": "postgresql://test"}):
-        with patch("main.psycopg2.connect") as mock_connect:
+        with patch("server.psycopg2.connect") as mock_connect:
             mock_connect.side_effect = Exception("DB error")
             response = client.get("/visits")
             assert response.status_code == 200
@@ -66,24 +66,24 @@ def test_visits_no_database():
 
 def test_app_mode_dev():
     with patch.dict(os.environ, {"APP_MODE": "DEV"}):
-        from main import app as new_app
+        from server import app as new_app
         assert new_app.state.mode == AppMode.DEV
 
 
 def test_app_mode_prod():
     with patch.dict(os.environ, {"APP_MODE": "PROD"}):
-        from main import app as new_app
+        from server import app as new_app
         assert new_app.state.mode == AppMode.PROD
 
 
 def test_insert_visit_without_database():
     with patch.dict(os.environ, {"DATABASE_URL": ""}):
-        from main import insert_visit
+        from server import insert_visit
         insert_visit("127.0.0.1")
 
 
 def test_count_visits_without_database():
     with patch.dict(os.environ, {"DATABASE_URL": ""}):
-        from main import count_visits
+        from server import count_visits
         result = count_visits()
         assert result is None
